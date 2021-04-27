@@ -1,4 +1,8 @@
 import shelve,sys
+from contracts import contract
+
+alphabet = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
+loginPasswordSymbols = alphabet + '0123456789_'
 
 def redirect(link) :
 		sys.stdout.buffer.write(('Refresh: 0; URL=%s\n'%link).encode('utf8') + b'\n')
@@ -101,8 +105,19 @@ class Volunteer(object) :
                 self.password=''
 
         def changeLogin(self,new) :
+                contract.is_not_empty(new)
+                contract.is_greater_than_or_equal(len(new), 4)
+                contract.is_greater_than_or_equal(len(new), 4)
+                contract.is_equal_to_any(new[0], alphabet)
+                for c in new[1:]: contract.is_equal_to_any(c, loginPasswordSymbols)
+                
                 self.login=new
+                
         def changePassword(self,new) :
+                contract.is_not_empty(new)
+                contract.is_greater_than_or_equal(len(new), 4)
+                for c in new[1:]: contract.is_equal_to_any(c, loginPasswordSymbols)
+                
                 self.password=new
 
         def __str__(self) : return "testing_of_the_method"
@@ -310,38 +325,64 @@ class Storage(object) :
                 return pairs
 
 def addStorage(db,address,roomines) :
+        contract.is_not_empty(address)
+        contract.is_greater_than(roomines, 0)
+                
         newID = incStorageID(db)
         db['storages'][newID] = Storage(newID,address,roomines)
         
 def addStorageCoordinator(db,firstName,secondName,surName,age) :
+        contract.is_not_empty(firstName)
+        contract.is_not_empty(secondName)
+        contract.is_not_empty(surName)
+        contract.is_greater_than(age, 0)
+        
         newID = incVolunteerID(db)
         db['volunteers'][newID] = StorageCoordinator(newID,firstName,secondName,surName,age,-1)
 
 def addHumanResourcesCoordinator(db,firstName,secondName,surName,age) :
+        contract.is_not_empty(firstName)
+        contract.is_not_empty(secondName)
+        contract.is_not_empty(surName)
+        contract.is_greater_than(age, 0)
+        
         cnt = 0
         for person in db['volunteers'].values() :
                 cnt+= type(person).__name__=='HumanResourcesCoordinator'
         if cnt>=2 :
                 print('There are too many human resources coordinators,sorry')
-                return
+                return False
         newID = incVolunteerID(db)
         db['volunteers'][newID] = HumanResourcesCoordinator(newID,firstName,secondName,surName,age)
+        return True
 
 def addMainCoordinator(db,firstName,secondName,surName,age) :
+        contract.is_not_empty(firstName)
+        contract.is_not_empty(secondName)
+        contract.is_not_empty(surName)
+        contract.is_greater_than(age, 0)
+        
         for person in db['volunteers'].values() :
                 if type(person).__name__=='MainCoordinator'  :
                         print('There are main coordinators')
-                        return
+                        return False
         newID = incVolunteerID(db)
         db['volunteers'][newID] = MainCoordinator(newID,firstName,secondName,surName,age)
+        return True
 
 def changeMainCoordinator(db,firstName,secondName,surName,age) :
-        for _id in record :
-                if type(db['volunteers'][_id]).__name__=='MainCoordinator' :
-                        db['volunteers'][_id] = MainCoordinator(_id,firstName,secondName,surName,age)
-                        break
+        contract.is_not_empty(firstName)
+        contract.is_not_empty(secondName)
+        contract.is_not_empty(surName)
+        contract.is_greater_than(age, 0)
+        
+        for person in db['volunteers'].values() :
+                if type(person).__name__=='MainCoordinator' :
+                        db['volunteers'][person.ID] = MainCoordinator(person.ID,firstName,secondName,surName,age)
+                        return 0
         else :
                 addMainCoordinator(db,firstName,secondName,surName,age)
+                return 1
 
 def addRequest(db,request) :
         db['requests'].append(request)
