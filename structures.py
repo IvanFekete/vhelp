@@ -1,7 +1,11 @@
 import shelve,sys
+from contracts import contract
+
+alphabet = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ'
+loginPasswordSymbols = alphabet + '0123456789_'
 
 def redirect(link) :
-        sys.stdout.write('Refresh: 0; URL=%s\n'%link)
+		sys.stdout.buffer.write(('Refresh: 0; URL=%s\n'%link).encode('utf8') + b'\n')
 
 def incVolunteerID(db) :
         db['maxVolunteerID']+=1
@@ -36,6 +40,10 @@ def dictToShelve(db,shlv) :
                 for el in db['storages'][key].resources :
                         if el.quantity==0 :
                                 db['storages'][key].resources.remove(el)
+        for request in db['resourcesRequests'] :
+                for resource in request.resources :
+                        if resource.quantity==0 : request.resources.remove(resource)
+                if request.resources==[] : db['resourcesRequests'].remove(request)
         for key in db : shlv[key] = db[key]
 
 def addNeed(db,resource) :
@@ -97,8 +105,19 @@ class Volunteer(object) :
                 self.password=''
 
         def changeLogin(self,new) :
+                contract.is_not_empty(new)
+                contract.is_greater_than_or_equal(len(new), 4)
+                contract.is_greater_than_or_equal(len(new), 4)
+                contract.is_equal_to_any(new[0], alphabet)
+                for c in new[1:]: contract.is_equal_to_any(c, loginPasswordSymbols)
+                
                 self.login=new
+                
         def changePassword(self,new) :
+                contract.is_not_empty(new)
+                contract.is_greater_than_or_equal(len(new), 4)
+                for c in new[1:]: contract.is_equal_to_any(c, loginPasswordSymbols)
+                
                 self.password=new
 
         def __str__(self) : return "testing_of_the_method"
@@ -250,7 +269,7 @@ class Storage(object) :
                                         if storageResource.name==resource.name and storageResource.quantity>=resource.quantity : break
                                 else :
                                         print("We haven't all of these resources,sorry.")
-                                        return
+                                        return {'mass' : 0,'list' : [] }
                         n = len(resources)
                         resources = [0]+resources
                         b = [[0 for i in range(m+1)] for j in range(n+1)]
@@ -270,16 +289,14 @@ class Storage(object) :
 
                         return {'mass' : b[n][m],'list' : lst[(n,m)] }
 				#giving races
-                pairs = [];print(len(resources))
+                pairs = []
                 while resources!=[] :
 						#initialization
                         deltaM = 10**18
                         myCar = None
                         haveCategory = []
-                        for i in self.volunteers :
-                                if type(db['volunteers'][i]).__name__=='Driver' and db['volunteers'][i].status=="Вільний" : haveCategory+=db['volunteers'][i].categories
                         for car in self.carpark :
-                                if abs(car.carrying-sumM)<deltaM and car.category in haveCategory and car.status=="Вільний" :
+                                if abs(car.carrying-sumM)<deltaM and car.status=="Вільний" :
                                         deltaM = abs(car.carrying-sumM)
                                         myCar = car
                         if myCar is None : break
@@ -289,7 +306,7 @@ class Storage(object) :
                                         self.carpark[i].get()
 
                         for i in self.volunteers :
-                                if type(db['volunteers'][i]).__name__=='Driver' and myCar.category in db['volunteers'][i].categories :
+                                if type(db['volunteers'][i]).__name__=='Driver' :
                                         db['volunteers'][i].get()
                                         volIndex= i;break
                         
@@ -297,49 +314,75 @@ class Storage(object) :
                         if myCar.carrying>sumM :
                                 for resource in resources :
                                         self.getResource(db,resource)
-                                pairs.append((db['volunteers'][volIndex],myCar,sumM))
+                                pairs.append((db['volunteers'][volIndex],myCar,sumM,resources))
                                 break
                         else :
                                 result = bag(int(sumM),resources)
                                 sumM-=result['mass']
-                                pairs.append((db['volunteers'][volIndex],myCar,result['mass']))
+                                pairs.append((db['volunteers'][volIndex],myCar,result['mass'],bag['list']))
                                 for resource in result['list'] :
                                         self.getResource(db,resource);resources.remove(resource)
                 return pairs
 
 def addStorage(db,address,roomines) :
+        contract.is_not_empty(address)
+        contract.is_greater_than(roomines, 0)
+                
         newID = incStorageID(db)
         db['storages'][newID] = Storage(newID,address,roomines)
         
 def addStorageCoordinator(db,firstName,secondName,surName,age) :
+        contract.is_not_empty(firstName)
+        contract.is_not_empty(secondName)
+        contract.is_not_empty(surName)
+        contract.is_greater_than(age, 0)
+        
         newID = incVolunteerID(db)
         db['volunteers'][newID] = StorageCoordinator(newID,firstName,secondName,surName,age,-1)
 
 def addHumanResourcesCoordinator(db,firstName,secondName,surName,age) :
+        contract.is_not_empty(firstName)
+        contract.is_not_empty(secondName)
+        contract.is_not_empty(surName)
+        contract.is_greater_than(age, 0)
+        
         cnt = 0
         for person in db['volunteers'].values() :
                 cnt+= type(person).__name__=='HumanResourcesCoordinator'
         if cnt>=2 :
                 print('There are too many human resources coordinators,sorry')
-                return
+                return False
         newID = incVolunteerID(db)
         db['volunteers'][newID] = HumanResourcesCoordinator(newID,firstName,secondName,surName,age)
+        return True
 
 def addMainCoordinator(db,firstName,secondName,surName,age) :
+        contract.is_not_empty(firstName)
+        contract.is_not_empty(secondName)
+        contract.is_not_empty(surName)
+        contract.is_greater_than(age, 0)
+        
         for person in db['volunteers'].values() :
                 if type(person).__name__=='MainCoordinator'  :
                         print('There are main coordinators')
-                        return
+                        return False
         newID = incVolunteerID(db)
         db['volunteers'][newID] = MainCoordinator(newID,firstName,secondName,surName,age)
+        return True
 
 def changeMainCoordinator(db,firstName,secondName,surName,age) :
-        for _id in record :
-                if type(db['volunteers'][_id]).__name__=='MainCoordinator' :
-                        db['volunteers'][_id] = MainCoordinator(_id,firstName,secondName,surName,age)
-                        break
+        contract.is_not_empty(firstName)
+        contract.is_not_empty(secondName)
+        contract.is_not_empty(surName)
+        contract.is_greater_than(age, 0)
+        
+        for person in db['volunteers'].values() :
+                if type(person).__name__=='MainCoordinator' :
+                        db['volunteers'][person.ID] = MainCoordinator(person.ID,firstName,secondName,surName,age)
+                        return 0
         else :
                 addMainCoordinator(db,firstName,secondName,surName,age)
+                return 1
 
 def addRequest(db,request) :
         db['requests'].append(request)
@@ -362,7 +405,7 @@ class Point(object) :
                 return "<h1>Location: %s</h1></br><h1>ID: %s</h1><br /><h1> Coordinates:\n</h1><br /><h1>X:%s  Y%s</h1>"%(self.location,str(self.ID),str(self.x),str(self.y))
 dist = lambda a,b : (a.x-b.x)**2+(a.y-b.y)**2
 
-def hungrian_algo(storages,need_points) :
+def hungrian_algo(db,storages,need_points) :
         #preview
         INF = 10**9
         storages = [Point(0,0,"_",0)]+storages
@@ -372,7 +415,11 @@ def hungrian_algo(storages,need_points) :
         a = [[INF for i in range(max(n,m)+1)] for j in range(max(n,m)+1)]
         for i in range(1,n+1) :
                 for j in range(1,m+1) :
-                        a[i][j] = dist(storages[i],need_points[j])
+                        for resource1 in db['storages'][int(storages[i].ID)].resources :
+                                for resource2 in db['resourcesRequests'][int(need_points[j].ID)].resources :
+                                        if(resource1.name==resource2.name) :
+                                                a[i][j] = dist(storages[i],need_points[j])
+                                                break
         mm = m
         m = max(n,m)
 
