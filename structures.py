@@ -335,7 +335,7 @@ def addStorageCoordinator(db,firstName,secondName,surName,age) :
         contract.is_not_empty(firstName)
         contract.is_not_empty(secondName)
         contract.is_not_empty(surName)
-        contract.is_greater_than(age, 0)
+        contract.is_greater_than(age, 17)
         
         newID = incVolunteerID(db)
         db['volunteers'][newID] = StorageCoordinator(newID,firstName,secondName,surName,age,-1)
@@ -344,7 +344,7 @@ def addHumanResourcesCoordinator(db,firstName,secondName,surName,age) :
         contract.is_not_empty(firstName)
         contract.is_not_empty(secondName)
         contract.is_not_empty(surName)
-        contract.is_greater_than(age, 0)
+        contract.is_greater_than(age, 17)
         
         cnt = 0
         for person in db['volunteers'].values() :
@@ -360,7 +360,7 @@ def addMainCoordinator(db,firstName,secondName,surName,age) :
         contract.is_not_empty(firstName)
         contract.is_not_empty(secondName)
         contract.is_not_empty(surName)
-        contract.is_greater_than(age, 0)
+        contract.is_greater_than(age, 17)
         
         for person in db['volunteers'].values() :
                 if type(person).__name__=='MainCoordinator'  :
@@ -374,7 +374,7 @@ def changeMainCoordinator(db,firstName,secondName,surName,age) :
         contract.is_not_empty(firstName)
         contract.is_not_empty(secondName)
         contract.is_not_empty(surName)
-        contract.is_greater_than(age, 0)
+        contract.is_greater_than(age, 17)
         
         for person in db['volunteers'].values() :
                 if type(person).__name__=='MainCoordinator' :
